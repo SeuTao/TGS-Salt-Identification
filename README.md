@@ -3,12 +3,12 @@ This is the source code for my part of the 4th place solution to the [TGS Salt I
 
 ## Recent Update
 
-**`2018.10.20`**: code to be upload.
+**`2018.10.22`**: single model training code updated.
 
 **`2018.10.20`**: We achieved the 4th place on  [Kaggle TGS Salt Identification Challenge](https://www.kaggle.com/c/data-science-bowl-2017/).
 
 #### Dependencies
-
+pytorch 0.3
 
 ## Solution Development
 #### Single model design
@@ -62,6 +62,14 @@ We started to do this part since the middle of  the competetion. As Heng posts, 
 |model 34+50+101 with post processing (final sub)|0.887|0.895|
 
 #### Training
+Train model_34 
+```
+CUDA_VISIBLE_DEVICES=0 python main.py --mode=train --model=model_34 --model_name=model_34_try --train_fold_index=0
+```
+Test model_34
+```
+CUDA_VISIBLE_DEVICES=0 python main.py --mode=test --model=model_34 --model_name=model_34_try --train_fold_index=0
+```
 
 #### Suggestions.
 
