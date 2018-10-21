@@ -49,6 +49,7 @@ According to the  2D and 3D jigsaw results (amazing ideas and great job from @CH
 
 #### Data distill (Pseudo Labeling)
 We started to do this part since the middle of  the competetion. As Heng posts, pseudo labeling  is pretty tricky and has the risk of overfitting. I am not sure whether it would boost the private LB untill the result is published. I just post our results here, the implementation details will be updated. 
+
 | model with datadistill|public LB| privare LB|
 | ---------------- | ---- | ----|
 |model_34|0.877|0.893|
