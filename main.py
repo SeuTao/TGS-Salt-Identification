@@ -432,8 +432,8 @@ class SingleModelSolver(object):
         submission = create_submission(infer)
         submission.to_csv(output_name, index=None)
 
-    def infer_5fold_all_Cycle(self, fold_index, mode = 'max_map'):
-        for i in range(9):
+    def infer_fold_all_Cycle(self, fold_index, mode = 'max_map'):
+        for i in range(self.cycle_num):
             self.infer_fold_TTA(fold_index, mode, Cycle=i)
 
 def main(config, aug_list):
@@ -443,7 +443,7 @@ def main(config, aug_list):
         solver.train_fold(config.train_fold_index, aug_list)
     if config.mode == 'test':
         solver = SingleModelSolver(config)
-        solver.infer_5fold_all_Cycle(config.train_fold_index)
+        solver.infer_fold_all_Cycle(config.train_fold_index)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
