@@ -1,5 +1,5 @@
 # Kaggle TGS Salt Identification Challenge 2018 4th place code
-This is the source code for my part of the 4th place solution to the [TGS Salt Identification Challenge](https://www.kaggle.com/c/data-science-bowl-2017/) hosted by Kaggle.com. 
+This is the source code for my part of the 4th place solution to the [TGS Salt Identification Challenge](https://www.kaggle.com/c/tgs-salt-identification-challenge) hosted by Kaggle.com. 
 
 ## Recent Update
 
