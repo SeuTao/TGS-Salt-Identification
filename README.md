@@ -5,7 +5,7 @@ This is the source code for my part of the 4th place solution to the [TGS Salt I
 
 **`2018.10.22`**: single model training code updated.
 
-**`2018.10.20`**: We achieved the 4th place on  [Kaggle TGS Salt Identification Challenge](https://www.kaggle.com/c/data-science-bowl-2017/).
+**`2018.10.20`**: We achieved the 4th place on  [Kaggle TGS Salt Identification Challenge](https://www.kaggle.com/c/tgs-salt-identification-challenge).
 
 #### Dependencies
 pytorch 0.3
