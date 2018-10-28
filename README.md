@@ -73,7 +73,7 @@ CUDA_VISIBLE_DEVICES=0 python main.py --mode=test --model=model_34 --model_name=
 
 #### Suggestions.
 
-## Refference
+## Reference
 
 
 
