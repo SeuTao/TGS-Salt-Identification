@@ -71,7 +71,7 @@ Test model_34
 CUDA_VISIBLE_DEVICES=0 python main.py --mode=test --model=model_34 --model_name=model_34_try --train_fold_index=0
 ```
 
-## Refference
+## Reference
 - https://arxiv.org/abs/1608.03983 LR schedule
 - https://arxiv.org/abs/1803.02579 Squeeze and excitation
 - https://arxiv.org/abs/1411.5752 Hypercolumns
