@@ -18,6 +18,43 @@ import imgaug as ia
 
 # NEPTUNE_CONFIG_PATH = str(pathlib.Path(__file__).resolve().parents[1] / 'configs' / 'neptune.yaml')
 
+import argparse
+from utils import *
+import numpy as np
+import os
+import glob
+import cv2
+from jigsaw.handcraft_ruls_postprocessing import submission_apply_jigsaw_postprocessing
+
+def save_csv_images(csv_path, save_path):
+    dict = decode_csv(csv_name=csv_path)
+
+    for id in dict:
+        id_img = dict[id]*255
+        cv2.imwrite(os.path.join(save_path,id+'.png'),id_img)
+
+def create_csv_lists(image_dir, printable = True):
+    if not os.path.exists(image_dir):
+        print("Image directory '" + image_dir + "' not found.")
+        return None
+
+    file_list = []
+    file_glob = os.path.join(image_dir,'*.' + 'csv')
+    file_list.extend(glob.glob(file_glob))
+    if printable:
+        print(len(file_list))
+    return file_list
+
+def create_csv_lists_recursive(image_dir):
+    total_list = []
+    for i in os.walk(image_dir):
+        cur_path = i[0]
+        list = create_csv_lists(cur_path,printable=False)
+        total_list.extend(list)
+
+    print(len(total_list))
+    return total_list
+
 def do_length_encode(x):
     bs = np.where(x.T.flatten())[0]
 
@@ -78,25 +115,6 @@ def state_dict_remove_moudle(moudle_state_dict, model):
 
     return state_dict
 
-
-from matplotlib import pyplot as plt
-
-def write_and_plot(name, aver_num, logits, max_y = 1.0, color="blue"):
-
-    def moving_average(a, n=aver_num):
-        ret = np.cumsum(a, dtype=float)
-        ret[n:] = ret[n:] - ret[:-n]
-        return ret[n - 1:] / n
-
-    # ===========================================================
-    moving_plot = moving_average(np.array(logits))
-    x = range(moving_plot.shape[0])
-    # plt.close()
-    plt.plot(x, moving_plot, color=color)
-    plt.ylim(0, max_y)
-    plt.savefig(name)
-
-
 def decompose(labeled):
     nr_true = labeled.max()
     masks = []
@@ -113,7 +131,6 @@ def decompose(labeled):
 
 def encode_rle(predictions):
     return [run_length_encoding(mask) for mask in predictions]
-
 
 def create_submission(predictions):
     output = []
@@ -142,7 +159,6 @@ def run_length_encoding(x):
 
     return rle
 
-
 def run_length_decoding(mask_rle, shape):
     """
     Based on https://www.kaggle.com/msl23518/visualize-the-stage1-test-solution and modified
@@ -163,76 +179,6 @@ def run_length_decoding(mask_rle, shape):
         img[lo:hi] = 1
     return img.reshape((shape[1], shape[0])).T
 
-
-def sigmoid(x):
-    return 1. / (1 + np.exp(-x))
-
-
-def softmax(X, theta=1.0, axis=None):
-    """
-    https://nolanbconaway.github.io/blog/2017/softmax-numpy
-    Compute the softmax of each element along an axis of X.
-
-    Parameters
-    ----------
-    X: ND-Array. Probably should be floats.
-    theta (optional): float parameter, used as a multiplier
-        prior to exponentiation. Default = 1.0
-    axis (optional): axis to compute values along. Default is the
-        first non-singleton axis.
-
-    Returns an array the same size as X. The result will sum to 1
-    along the specified axis.
-    """
-
-    # make X at least 2d
-    y = np.atleast_2d(X)
-
-    # find axis
-    if axis is None:
-        axis = next(j[0] for j in enumerate(y.shape) if j[1] > 1)
-
-    # multiply y against the theta parameter,
-    y = y * float(theta)
-
-    # subtract the max for numerical stability
-    y = y - np.expand_dims(np.max(y, axis=axis), axis)
-
-    # exponentiate y
-    y = np.exp(y)
-
-    # take the sum along the specified axis
-    ax_sum = np.expand_dims(np.sum(y, axis=axis), axis)
-
-    # finally: divide elementwise
-    p = y / ax_sum
-
-    # flatten if X was 1D
-    if len(X.shape) == 1: p = p.flatten()
-
-    return p
-
-
-def from_pil(*images):
-    images = [np.array(image) for image in images]
-    if len(images) == 1:
-        return images[0]
-    else:
-        return images
-
-
-def to_pil(*images):
-    images = [Image.fromarray((image).astype(np.uint8)) for image in images]
-    if len(images) == 1:
-        return images[0]
-    else:
-        return images
-
-
-def binary_from_rle(rle):
-    return cocomask.decode(rle)
-
-
 def get_crop_pad_sequence(vertical, horizontal):
     top = int(vertical / 2)
     bottom = vertical - top
@@ -240,13 +186,11 @@ def get_crop_pad_sequence(vertical, horizontal):
     left = horizontal - right
     return (top, right, bottom, left)
 
-
 def get_list_of_image_predictions(batch_predictions):
     image_predictions = []
     for batch_pred in batch_predictions:
         image_predictions.extend(list(batch_pred))
     return image_predictions
-
 
 def set_seed(seed):
     random.seed(seed)
@@ -255,35 +199,9 @@ def set_seed(seed):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
-
-class ImgAug:
-    def __init__(self, augmenters):
-        if not isinstance(augmenters, list):
-            augmenters = [augmenters]
-        self.augmenters = augmenters
-        self.seq_det = None
-
-    def _pre_call_hook(self):
-        seq = iaa.Sequential(self.augmenters)
-        seq = reseed(seq, deterministic=True)
-        self.seq_det = seq
-
-    def transform(self, *images):
-        images = [self.seq_det.augment_image(image) for image in images]
-        if len(images) == 1:
-            return images[0]
-        else:
-            return images
-
-    def __call__(self, *args):
-        self._pre_call_hook()
-        return self.transform(*args)
-
-
 def get_seed():
     seed = int(time.time()) + int(os.getpid())
     return seed
-
 
 def reseed(augmenter, deterministic=True):
     augmenter.random_state = ia.new_random_state(get_seed())

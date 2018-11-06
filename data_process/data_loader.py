@@ -12,12 +12,29 @@ def read_txt(txt):
     return [tmp.strip() for tmp in lines]
 
 class SaltDataset(Dataset):
-    def __init__(self, transform, mode, image_size, fold_index, aug_list):
+    def __init__(self, transform, mode, image_size, fold_index, aug_list, pseudo_csv = None, pseudo_index = -1):
 
         self.transform = transform
         self.mode = mode
         self.image_size = image_size
         self.aug_list = aug_list
+
+        if pseudo_csv is None:
+            self.is_pseudo = False
+            self.pseudo_index = -1
+        else:
+            self.is_pseudo = True
+            self.pseudo_mask_path = r'./data_process/pseudo_mask_path'
+            csv_name = os.path.split(pseudo_csv)[1].replace('.csv','')
+            self.pseudo_mask_path = os.path.join(self.pseudo_mask_path, csv_name)
+            print(self.pseudo_mask_path)
+
+            if not os.path.exists(self.pseudo_mask_path):
+                os.makedirs(self.pseudo_mask_path)
+
+            print('save the csv images to disk')
+            save_csv_images(pseudo_csv, self.pseudo_mask_path)
+            self.pseudo_index = pseudo_index
 
         print('AugList: ')
         print(self.aug_list)
@@ -42,6 +59,11 @@ class SaltDataset(Dataset):
             self.train_list = [tmp + '.png' for tmp in self.train_list]
             self.num_data = len(self.train_list)
 
+            if self.is_pseudo:
+                print('pseudo labeling part: ' + str(self.pseudo_index))
+                self.pseudo_list = read_txt('./data_process/pseudo_split/pseudo_split'+str(self.pseudo_index)+'.txt')
+                print(len(self.pseudo_list))
+
         elif self.mode == 'val':
             data = pd.read_csv('./data_process/10fold/fold' + str(fold_index) + '_valid.csv')
             self.val_list = data['fold']
@@ -59,8 +81,18 @@ class SaltDataset(Dataset):
             return
 
         if self.mode == 'train':
-            image = cv2.imread(os.path.join(self.train_image_path, self.train_list[index]), 1)
-            label = cv2.imread(os.path.join(self.train_mask_path, self.train_list[index]), 0)
+            switch = 0
+            # random select pseudo label images
+            if self.is_pseudo:
+                switch = random.randint(0, 1)
+
+            if switch == 0:
+                image = cv2.imread(os.path.join(self.train_image_path, self.train_list[index]), 1)
+                label = cv2.imread(os.path.join(self.train_mask_path, self.train_list[index]), 0)
+            else:
+                index = random.randint(0,len(self.pseudo_list) - 1)
+                image = cv2.imread(os.path.join(self.test_image_path, self.pseudo_list[index]), 1)
+                label = cv2.imread(os.path.join(self.pseudo_mask_path, self.pseudo_list[index]), 0)
 
         if self.mode == 'val':
             image = cv2.imread(os.path.join(self.train_image_path, self.val_list[index]), 1)
@@ -115,10 +147,9 @@ class SaltDataset(Dataset):
         return self.num_data
 
 
-def get_foldloader(image_size, batch_size, fold_index, aug_list = None, mode='train'):
-
+def get_foldloader(image_size, batch_size, fold_index, aug_list = None, mode='train', pseudo_csv = None, pseudo_index = -1):
     """Build and return data loader."""
-    dataset = SaltDataset(None, mode, image_size, fold_index, aug_list)
+    dataset = SaltDataset(None, mode, image_size, fold_index, aug_list, pseudo_csv = pseudo_csv, pseudo_index = pseudo_index)
 
     shuffle = False
     if mode == 'train':

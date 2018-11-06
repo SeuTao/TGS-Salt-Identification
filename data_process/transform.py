@@ -1,6 +1,3 @@
-# from include import *
-# from utility.draw import *
-# from utility.file import *
 import cv2
 import numpy as np
 import os
@@ -11,8 +8,9 @@ def do_resize2(image, mask, H, W):
     mask  = (mask>0.5).astype(np.float32)
 
     return image,mask
-#################################################################
 
+
+#################################################################
 def compute_center_pad(H,W, factor=32):
     if H%factor==0:
         dy0,dy1=0,0
@@ -217,101 +215,6 @@ def do_random_shift_scale_crop_pad2(image, mask, limit=0.10):
     return image, mask
 
 #===========================================================================
-def do_shift_scale_rotate2( image, mask, dx=0, dy=0, scale=1, angle=0 ):
-    borderMode=cv2.BORDER_REPLICATE
-    #cv2.BORDER_REFLECT_101  cv2.BORDER_CONSTANT
-
-    height, width = image.shape[:2]
-    sx = scale
-    sy = scale
-    cc = math.cos(angle/180*math.pi)*(sx)
-    ss = math.sin(angle/180*math.pi)*(sy)
-    rotate_matrix = np.array([ [cc,-ss], [ss,cc] ])
-
-    box0 = np.array([ [0,0], [width,0],  [width,height], [0,height], ],np.float32)
-    box1 = box0 - np.array([width/2,height/2])
-    box1 = np.dot(box1,rotate_matrix.T) + np.array([width/2+dx,height/2+dy])
-
-    box0 = box0.astype(np.float32)
-    box1 = box1.astype(np.float32)
-    mat  = cv2.getPerspectiveTransform(box0,box1)
-
-    image = cv2.warpPerspective(image, mat, (width,height),flags=cv2.INTER_LINEAR,
-                                borderMode=borderMode,borderValue=(0,0,0,))  #cv2.BORDER_CONSTANT, borderValue = (0, 0, 0))  #cv2.BORDER_REFLECT_101
-    mask = cv2.warpPerspective(mask, mat, (width,height),flags=cv2.INTER_NEAREST,#cv2.INTER_LINEAR
-                                borderMode=borderMode,borderValue=(0,0,0,))  #cv2.BORDER_CONSTANT, borderValue = (0, 0, 0))  #cv2.BORDER_REFLECT_101
-    mask  = (mask>0.5).astype(np.float32)
-    return image, mask
-
-#https://www.kaggle.com/ori226/data-augmentation-with-elastic-deformations
-#https://github.com/letmaik/lensfunpy/blob/master/lensfunpy/util.py
-def do_elastic_transform2(image, mask, grid=32, distort=0.2):
-    borderMode=cv2.BORDER_REPLICATE
-    height, width = image.shape[:2]
-
-    x_step = int(grid)
-    xx = np.zeros(width,np.float32)
-    prev = 0
-    for x in range(0, width, x_step):
-        start = x
-        end   = x + x_step
-        if end > width:
-            end = width
-            cur = width
-        else:
-            cur = prev + x_step*(1+random.uniform(-distort,distort))
-
-        xx[start:end] = np.linspace(prev,cur,end-start)
-        prev=cur
-
-
-    y_step = int(grid)
-    yy = np.zeros(height,np.float32)
-    prev = 0
-    for y in range(0, height, y_step):
-        start = y
-        end   = y + y_step
-        if end > height:
-            end = height
-            cur = height
-        else:
-            cur = prev + y_step*(1+random.uniform(-distort,distort))
-
-        yy[start:end] = np.linspace(prev,cur,end-start)
-        prev=cur
-
-    #grid
-    map_x,map_y =  np.meshgrid(xx, yy)
-    map_x = map_x.astype(np.float32)
-    map_y = map_y.astype(np.float32)
-
-    #image = map_coordinates(image, coords, order=1, mode='reflect').reshape(shape)
-    image = cv2.remap(image, map_x, map_y, interpolation=cv2.INTER_LINEAR, borderMode=borderMode,borderValue=(0,0,0,))
-
-    mask = cv2.remap(mask, map_x, map_y, interpolation=cv2.INTER_NEAREST, borderMode=borderMode,borderValue=(0,0,0,))
-    mask  = (mask>0.5).astype(np.float32)
-    return image, mask
-
-def do_horizontal_shear2( image, mask, dx=0 ):
-    borderMode=cv2.BORDER_REPLICATE
-    #cv2.BORDER_REFLECT_101  cv2.BORDER_CONSTANT
-
-    height, width = image.shape[:2]
-    dx = int(dx*width)
-
-    box0 = np.array([ [0,0], [width,0],  [width,height], [0,height], ],np.float32)
-    box1 = np.array([ [+dx,0], [width+dx,0],  [width-dx,height], [-dx,height], ],np.float32)
-
-    box0 = box0.astype(np.float32)
-    box1 = box1.astype(np.float32)
-    mat = cv2.getPerspectiveTransform(box0,box1)
-
-    image = cv2.warpPerspective(image, mat, (width,height),flags=cv2.INTER_LINEAR,
-                                borderMode=borderMode,borderValue=(0,0,0,))  #cv2.BORDER_CONSTANT, borderValue = (0, 0, 0))  #cv2.BORDER_REFLECT_101
-    mask  = cv2.warpPerspective(mask, mat, (width,height),flags=cv2.INTER_NEAREST,#cv2.INTER_LINEAR
-                                borderMode=borderMode,borderValue=(0,0,0,))  #cv2.BORDER_CONSTANT, borderValue = (0, 0, 0))  #cv2.BORDER_REFLECT_101
-    mask  = (mask>0.5).astype(np.float32)
-    return image, mask
 
 def resize_and_pad(image, resize_size, factor):
     image = cv2.resize(image, (resize_size,resize_size))
@@ -343,20 +246,36 @@ def center_corp(image, image_size, crop_size):
     return image
 
 
+from math import isnan
+def do_length_decode(rle, H, W, fill_value=255):
+    mask = np.zeros((H,W), np.uint8)
+    if type(rle).__name__ == 'float': return mask
 
+    mask = mask.reshape(-1)
+    rle = np.array([int(s) for s in rle.split(' ')]).reshape(-1, 2)
+    for r in rle:
+        start = r[0]-1
+        end = start + r[1]
+        mask[start : end] = fill_value
+    mask = mask.reshape(W, H).T   # H, W need to swap as transposing.
+    return mask
 
-# main #################################################################
-if __name__ == '__main__':
-    # print( '%s: calling main function ... ' % os.path.basename(__file__))
-    path = r'/data1/shentao/DATA/Kaggle/Salt/Kaggle_salt/train/images/0a0814464f.png'
-    image = cv2.imread(path,1)
-    # image = cv2.resize(image, (202,202))
+def decode_csv(csv_name):
+    import pandas as pd
+    data = pd.read_csv(csv_name)
+    id = data['id']
+    rle_mask = data['rle_mask']
 
-    image = resize_and_pad(image, 202, 64)
-    # cv2.imwrite('tmp_.png', image)
-    # image = do_center_pad_to_factor(image, factor=64)
+    dict = {}
+    for id, rle in zip(id,rle_mask):
+        tmp = do_length_decode(rle, 101, 101, fill_value=1)
+        dict[id] = tmp
 
-    # image,image = do_random_pad_to_factor2(image, image, limit=(-10, 10), factor=64)
-    cv2.imwrite('tmp.png', image)
-    # image = center_corp(image, image_size=256, crop_size=202)
-    # cv2.imwrite('tmp_crop.png', image)
+    return dict
+
+def save_csv_images(csv_path, save_path):
+    dict = decode_csv(csv_name=csv_path)
+
+    for id in dict:
+        id_img = dict[id]*255
+        cv2.imwrite(os.path.join(save_path,id+'.png'),id_img)

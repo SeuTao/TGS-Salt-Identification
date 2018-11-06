@@ -1,5 +1,5 @@
 import argparse
-from data_loader import *
+from data_process.data_loader import *
 from data_process.transform import *
 from loss.bce_losses import *
 from loss.cyclic_lr import *
@@ -7,17 +7,19 @@ from loss.lovasz_losses import *
 
 from model.model import model34_DeepSupervion,\
                         model50A_DeepSupervion,\
-                        model101A_DeepSupervion
+                        model50A_slim_DeepSupervion,\
+                        model101A_DeepSupervion,\
+                        model101B_DeepSupervion,\
+                        model152_DeepSupervion,\
+                        model154_DeepSupervion
 
 from utils import create_submission
-from evaluate import do_kaggle_metric
+from loss.metric import do_kaggle_metric
 import time
 import datetime
 
-
 class SingleModelSolver(object):
     def __init__(self, config):
-
         self.model_name = config.model_name
         self.model = config.model
 
@@ -35,6 +37,10 @@ class SingleModelSolver(object):
 
         self.batch_size = config.batch_size
         self.pretrained_model = config.pretrained_model
+
+        #pseudo label
+        self.pseudo_csv = config.pseudo_csv
+        self.pseudo_split = config.pseudo_split
 
         # Path
         self.log_path = os.path.join('./models', self.model_name, config.log_path)
@@ -68,8 +74,20 @@ class SingleModelSolver(object):
         elif self.model == 'model_50A':
             self.G = model50A_DeepSupervion()
 
+        elif self.model == 'model_50A_slim':
+            self.G = model50A_slim_DeepSupervion()
+
         elif self.model == 'model_101A':
             self.G = model101A_DeepSupervion()
+
+        elif self.model == 'model_101B':
+            self.G = model101B_DeepSupervion()
+
+        elif self.model == 'model_152':
+            self.G = model152_DeepSupervion()
+
+        elif self.model == 'model_154':
+            self.G = model154_DeepSupervion()
 
         self.g_optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, self.G.parameters()),
                                            self.g_lr, weight_decay=0.0002, momentum=0.9)
@@ -87,6 +105,7 @@ class SingleModelSolver(object):
         print("The number of parameters: {}".format(num_params))
 
     def load_pretrained_model(self, fold_index, mode = None, Cycle=None):
+
             if mode == None:
                 if os.path.exists(os.path.join(self.model_save_path, 'fold_' + str(fold_index),
                                                '{}_G.pth'.format(self.pretrained_model))):
@@ -101,6 +120,8 @@ class SingleModelSolver(object):
                 else:
                     pth = os.path.join(self.model_save_path,'fold_' + str(fold_index),
                                       'Cycle_'+str(Cycle)+'_Lsoftmax_maxMap_G.pth')
+
+                # print(pth)
 
                 if os.path.exists(pth):
                     self.G.load_state_dict(torch.load(pth))
@@ -140,8 +161,12 @@ class SingleModelSolver(object):
             os.makedirs(os.path.join(self.model_save_path,'fold_'+str(fold_index)))
 
         print('train loader!!!')
-        data_loader = get_foldloader(self.image_size, self.batch_size, fold_index, aug_list,
-                                      mode= 'train')
+        data_loader = get_foldloader(self.image_size,
+                                     self.batch_size,
+                                     fold_index, aug_list,
+                                     mode= 'train',
+                                     pseudo_csv=self.pseudo_csv,
+                                     pseudo_index=self.pseudo_split)
         print('val loader!!!')
         val_loader = get_foldloader(self.image_size, 1, fold_index, mode='val')
 
@@ -218,7 +243,7 @@ class SingleModelSolver(object):
                     inputs = self.to_var(images)
                     labels = self.to_var(labels)
                     class_lbls = self.to_var(torch.LongTensor(is_empty))
-                    binary_logits, no_empty_logits, no_empty, final_logits, final = self.G(inputs)
+                    binary_logits, no_empty_logits, final_logits = self.G(inputs)
                     loss_final = self.criterion(final_logits, labels)
                     class_loss = CE(binary_logits, class_lbls)
 
@@ -417,18 +442,25 @@ class SingleModelSolver(object):
         return out
 
     def infer_fold_TTA(self, fold_index, mode = 'max_map', Cycle = None):
+
         print(mode)
         val_loader = get_foldloader(self.image_size, self.batch_size/2, fold_index, mode='val')
         _, max_map, thres = self.val_TTA(fold_index, val_loader, is_load = True, mode = mode, Cycle = Cycle)
+
         if fold_index<0:
             return
 
         infer = self.get_infer_TTA(fold_index, thres)
+
         if Cycle is None:
             name_tmp = 'fold_{}_TTA_{}{:.3f}at{:.3f}.csv'.format(fold_index,mode,max_map,thres)
         else:
             name_tmp = 'fold_{}_Cycle_{}_TTA_{}{:.3f}at{:.3f}.csv'.format(fold_index, Cycle, mode, max_map, thres)
-        output_name = os.path.join(self.model_save_path, 'fold_' + str(fold_index),name_tmp)
+
+        if not os.path.exists(os.path.join(self.result_path, 'fold_' + str(fold_index))):
+            os.makedirs(os.path.join(self.result_path, 'fold_' + str(fold_index)))
+
+        output_name = os.path.join(self.result_path, 'fold_' + str(fold_index), name_tmp)
         submission = create_submission(infer)
         submission.to_csv(output_name, index=None)
 
@@ -447,16 +479,21 @@ def main(config, aug_list):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     parser.add_argument('--train_fold_index', type=int, default=0)
     parser.add_argument('--model', type=str, default='model_34')
-    parser.add_argument('--model_name', type=str, default='model_34')
+    parser.add_argument('--model_name', type=str, default='model_34_pseudo_0')
     parser.add_argument('--image_size', type=int, default=128)
     parser.add_argument('--batch_size', type=int, default=16)
+
 
     aug_list = ['flip_lr']
     parser.add_argument('--mode', type=str, default='train', choices=['train', 'test'])
     parser.add_argument('--pretrained_model', type=str, default=None)
+
+    # pseudo label
+    parser.add_argument('--pseudo_csv', type=str, default=r'0.8935_for_pseudo_label.csv')
+    parser.add_argument('--pseudo_split', type=int, default=0)
 
     parser.add_argument('--lr', type=float, default=0.01)
     parser.add_argument('--cycle_num', type=int, default=7)
