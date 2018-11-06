@@ -3,12 +3,20 @@ This is the source code for my part of the 4th place solution to the [TGS Salt I
 
 ## Recent Update
 
+**`2018.11.06`**: jigsaw python code，dirty code of handcraft rules and pseudo label training code updated.
+
 **`2018.10.22`**: single model training code updated.
 
 **`2018.10.20`**: We achieved the 4th place on  [Kaggle TGS Salt Identification Challenge](https://www.kaggle.com/c/tgs-salt-identification-challenge).
 
 #### Dependencies
-pytorch 0.3
+- opencv-python==3.4.2
+- scikit-image==0.14.0
+- scikit-learn==0.19.1
+- scipy==1.1.0
+- torch==0.3.1
+- torchvision==0.2.1
+
 
 ## Solution Development
 #### Single model design
@@ -61,15 +69,62 @@ We started to do this part since the middle of  the competetion. As Heng posts, 
 |model_101 with post processing|0.886|0.8950|5
 |model 34+50+101 with post processing (final sub)|0.887|0.8953|4
 
-#### Training
-Train model_34 
+
+#### Data Setup
+save the train mask images to disk
 ```
-CUDA_VISIBLE_DEVICES=0 python main.py --mode=train --model=model_34 --model_name=model_34_try --train_fold_index=0
+python prepare_data.py 
 ```
-Test model_34
+
+#### Single Model Training
+train model_34 fold 0：
 ```
-CUDA_VISIBLE_DEVICES=0 python main.py --mode=test --model=model_34 --model_name=model_34_try --train_fold_index=0
+CUDA_VISIBLE_DEVICES=0 python train.py --mode=train --model=model_34 --model_name=model_34 --train_fold_index=0
 ```
+predict model_34 all fold：
+```
+CUDA_VISIBLE_DEVICES=0 python predict.py --mode=InferModel10Fold --model=model_34 --model_name=model_34
+```
+
+#### Ensemble and Jigsaw Post-processing
+After you predict all 6 single models 10 fold test csv，use this two command to perform majority voting and post-processing.
+
+a) solve Jigsaw map (only need to run for one time)
+
+```
+python predict.py --mode=SolveJigsawPuzzles
+```
+
+b) ensemble 6 model all cycles and post-processing, 'model_name_list' is the list of signle model names you train with the command above
+```
+python predict.py --mode=EnsembleModels --model_name_list=model_50A,model_50A_slim,model_101A,model_101B,model_152,model_154 ----save_sub_name=6_model_ensemble.csv
+```
+You'll get ensemble sub '6_model_ensemble.csv' and ensembel+jigsaw sub '6_model_ensemble-vertical-empty-smooth.csv'
+
+#### Pseudo label training
+After you get ensemble+jigsaw results, use command below to train with pseudo label. We randomly split the test set into two parts. For each model, we train twice with 50% pseudo labels each.
+
+train model_34 with 6model output pseudo label:
+
+a) part0 fold 0
+
+```
+python train.py --mode=train --model=model_34 --model_name=model_34_pseudo_part0 --pseudo_csv=6_model_ensemble-vertical-empty-smooth.csv --pseudo_split=0 --train_fold_index=0
+```
+
+b) part1 fold 0
+```
+python train.py --mode=train --model=model_34 --model_name=model_34_pseudo_part1 --pseudo_csv=6_model_ensemble-vertical-empty-smooth.csv --pseudo_split=1 --train_fold_index=1
+```
+
+#### Final Ensemble
+
+```
+python predict.py --mode=EnsembleModels --model_name_list=model_34_pseudo_part0,model_34_pseudo_part1,model_50A_slim_pseudo_part0,model_50A_slim_pseudo_part1,model_101A_pseudo_part0,model_101A_pseudo_part1 ----save_sub_name=final_sub.csv
+```
+
+The "final_sub-vertical-empty-smooth.csv" is all you need.
+
 
 ## Reference
 - https://arxiv.org/abs/1608.03983 LR schedule
