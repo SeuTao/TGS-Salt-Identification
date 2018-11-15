@@ -482,7 +482,7 @@ if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     parser.add_argument('--train_fold_index', type=int, default=0)
     parser.add_argument('--model', type=str, default='model_34')
-    parser.add_argument('--model_name', type=str, default='model_34_pseudo_0')
+    parser.add_argument('--model_name', type=str, default='model_34')
     parser.add_argument('--image_size', type=int, default=128)
     parser.add_argument('--batch_size', type=int, default=16)
 
@@ -492,7 +492,7 @@ if __name__ == '__main__':
     parser.add_argument('--pretrained_model', type=str, default=None)
 
     # pseudo label
-    parser.add_argument('--pseudo_csv', type=str, default=r'0.8935_for_pseudo_label.csv')
+    parser.add_argument('--pseudo_csv', type=str, default=None)
     parser.add_argument('--pseudo_split', type=int, default=0)
 
     parser.add_argument('--lr', type=float, default=0.01)
