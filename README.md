@@ -1,6 +1,8 @@
 # Kaggle TGS Salt Identification Challenge 2018 4th place code
 This is the source code for my part of the 4th place solution to the [TGS Salt Identification Challenge](https://www.kaggle.com/c/tgs-salt-identification-challenge) hosted by Kaggle.com. 
 
+![image](https://github.com/SeuTao/Kaggle_TGS2018_4th_solution/blob/master/png/tgs.png)
+
 ## Recent Update
 
 **`2018.11.06`**: jigsaw python code，dirty code of handcraft rules and pseudo label training code updated.
