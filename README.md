@@ -51,7 +51,7 @@ We designed 6 single models for the final submission;
 |50+50_slim+101A+101B+152+154|0.874|0.892|
 
 #### Post processing
-According to the  2D and 3D jigsaw results (amazing ideas and great job from @CHAN), we applied around 10 handcraft rules that gave a 0.010~0.011 public LB boost and 0.001 private LB boost.
+According to the  2D and 3D jigsaw results, we applied around 10 handcraft rules that gave a 0.010~0.011 public LB boost and 0.001 private LB boost.
 
 |model|public LB| privare LB|
 | ---------------- | ---- | ----|
