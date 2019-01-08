@@ -59,6 +59,15 @@ According to the  2D and 3D jigsaw results, we applied around 10 handcraft rules
 
 #### Data distill (Pseudo Labeling)
 We started to do this part since the middle of  the competetion. As Heng posts, pseudo labeling  is pretty tricky and has the risk of overfitting. I am not sure whether it would boost the private LB untill the result is published. I just post our results here, the implementation details will be updated. 
+Steps (as the following flow chart shows):
+  1. Grabing the pseudo labels provided by previous predict (with post processing).
+  2. Randomly split the test set into two parts, one for training and the other for predicting.
+  3. To prevent overfitting to pseudo labels, we randomly select images from training set or test set (one part) with same probability in each mini batch.
+  4. Training the new dataset in three different networks with same steps as mentioned previously.
+  5. Predicting the test set (the other part) by all three trained models and voting the result.
+  6. Repeat step 3 to 5 except that in this time we change two test parts.
+  
+ ![image](https://github.com/SeuTao/Kaggle_TGS2018_4th_solution/blob/master/png/flow_chart.png)
 
 | model with datadistill|public LB| privare LB|placement
 | ---------------- | ---- | ----| ---|
