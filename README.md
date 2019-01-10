@@ -26,7 +26,7 @@ This is the source code for my part of the 4th place solution to the [TGS Salt I
 - input: 101 random pad to 128*128, random LRflip;
 - encoder: resnet34, se-resnext50, resnext101_ibna, se-resnet101, se-resnet152, se resnet154;
 - decoder: scse, hypercolumn (not used in network with resnext101_ibna, se_resnext101 backbone), ibn block, dropout;
-- Deep supervision structure with Lovasz softmax (a great idea from Heng);
+- Deep supervision structure with Lovasz softmax;
 We designed 6 single models for the final submission;
 
 
@@ -58,7 +58,7 @@ According to the  2D and 3D jigsaw results, we applied around 10 handcraft rules
 |50+50_slim+101A+101B with post processing|0.884|0.893|
 
 #### Data distill (Pseudo Labeling)
-We started to do this part since the middle of  the competetion. As Heng posts, pseudo labeling  is pretty tricky and has the risk of overfitting. I am not sure whether it would boost the private LB untill the result is published. I just post our results here, the implementation details will be updated. 
+We started to do this part since the middle of  the competetion. Pseudo labeling  is pretty tricky and has the risk of overfitting. I am not sure whether it would boost the private LB untill the result is published. I just post our results here, the implementation details will be updated. 
 Steps (as the following flow chart shows):
   1. Grabing the pseudo labels provided by previous predict (with post processing).
   2. Randomly split the test set into two parts, one for training and the other for predicting.
