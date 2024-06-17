@@ -1,7 +1,7 @@
 glob2==0.6
 opencv-python==4.2.0.32
 scikit-image==0.14.0
-scikit-learn==0.19.1
+scikit-learn==1.5.0
 scipy==1.10.0
 torch==1.13.1
 torchvision==0.2.1
